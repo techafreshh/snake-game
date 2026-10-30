@@ -4,6 +4,20 @@
 (function () {
   'use strict';
 
+  // Eat juice pools: renderer-owned, driven by state.lastEat events.
+  // Capped so over-cap spawns drop the oldest; never allocate per frame
+  // outside spawns.
+  var particles = [];
+  var pops = [];
+  var lastT = 0;
+  var seenEatId = null;
+  var MAX_PARTICLES = 120;
+  var MAX_POPS = 8;
+  var BURST_N = 10;
+  var PARTICLE_MS = 400;
+  var POP_MS = 700;
+  var POP_RISE_PX = 48;
+
   function draw(canvas, state, config, alpha) {
     var ctx = canvas.getContext('2d');
     var cell = config.CELL_PX;
@@ -70,6 +84,155 @@
       ctx.fillStyle = i === 0 ? '#99ff99' : '#33ff33';
       ctx.fillRect(fx * cell, fy * cell, cell, cell);
     }
+
+    drawEffects(ctx, state, config, cell);
+  }
+
+  // One burst plus one score pop per new lastEat id, then per-frame
+  // advance/fade of both pools. Slow pickups burst without pop text.
+  function drawEffects(ctx, state, config, cell) {
+    var now = Date.now();
+    var dt;
+    if (!lastT) {
+      dt = 0.016;
+    } else {
+      dt = (now - lastT) / 1000;
+      if (!(dt >= 0) || !(dt <= 0.05)) {
+        dt = dt < 0 ? 0 : 0.05;
+      }
+    }
+    lastT = now;
+
+    var burstN = config.PARTICLE_COUNT || BURST_N;
+    var particleMs = config.PARTICLE_MS || PARTICLE_MS;
+    var popMs = config.POP_MS || POP_MS;
+    var risePx = config.POP_RISE_PX || POP_RISE_PX;
+    var maxParticles = config.MAX_PARTICLES || MAX_PARTICLES;
+    var maxPops = config.MAX_POPS || MAX_POPS;
+
+    var eat = state.lastEat;
+    if (!eat) {
+      if (particles.length > 0 || pops.length > 0) {
+        particles.length = 0;
+        pops.length = 0;
+      }
+      seenEatId = null;
+    } else if (eat.id !== seenEatId) {
+      seenEatId = eat.id;
+      spawnBurst(eat, cell, now, burstN, maxParticles);
+      var text = null;
+      if (eat.kind === 'food' || eat.kind === 'golden') {
+        if (typeof eat.points === 'number' && eat.points > 0) {
+          text = '+' + eat.points;
+        } else if (eat.kind === 'golden') {
+          text = '+' + (config.GOLDEN_SCORE || 50);
+        } else {
+          text = '+' + (config.SCORE_PER_FOOD || 10);
+        }
+      }
+      if (text) {
+        pops.push({
+          x: (eat.x + 0.5) * cell,
+          y: (eat.y + 0.5) * cell,
+          text: text,
+          born: now
+        });
+        while (pops.length > maxPops) {
+          pops.shift();
+        }
+      }
+    }
+
+    if (particles.length === 0 && pops.length === 0) {
+      return;
+    }
+
+    ctx.save();
+
+    var k;
+    for (k = particles.length - 1; k >= 0; k--) {
+      if (now - particles[k].born >= particleMs) {
+        particles.splice(k, 1);
+      }
+    }
+    for (k = pops.length - 1; k >= 0; k--) {
+      if (now - pops[k].born >= popMs) {
+        pops.splice(k, 1);
+      }
+    }
+
+    for (k = 0; k < particles.length; k++) {
+      var p = particles[k];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      var age = now - p.born;
+      var t = age / particleMs;
+      if (t < 0) {
+        t = 0;
+      }
+      if (t > 1) {
+        t = 1;
+      }
+      ctx.globalAlpha = 1 - t;
+      ctx.fillStyle = (k % 2 === 0) ? '#33ff33' : '#99ff99';
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+
+    if (pops.length > 0) {
+      ctx.globalAlpha = 1;
+      ctx.font = '12px "Press Start 2P", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (k = 0; k < pops.length; k++) {
+        var pop = pops[k];
+        var page = now - pop.born;
+        var pt = page / popMs;
+        if (pt < 0) {
+          pt = 0;
+        }
+        if (pt > 1) {
+          pt = 1;
+        }
+        ctx.globalAlpha = 1 - pt;
+        ctx.fillStyle = '#fff';
+        ctx.fillText(pop.text, pop.x, pop.y - pt * risePx);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  // Burst of green squares from the eaten cell centre. Random angle at
+  // 40-160 px/s and 3-6 px size; born stamp drives the 400ms fade.
+  function spawnBurst(eat, cell, now, burstN, maxParticles) {
+    var cx = (eat.x + 0.5) * cell;
+    var cy = (eat.y + 0.5) * cell;
+    for (var i = 0; i < burstN; i++) {
+      var ang = Math.random() * Math.PI * 2;
+      var speed = 40 + Math.random() * 120;
+      particles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
+        size: 3 + Math.random() * 3,
+        born: now
+      });
+    }
+    while (particles.length > maxParticles) {
+      particles.shift();
+    }
+  }
+
+  function resetEffects() {
+    particles.length = 0;
+    pops.length = 0;
+    seenEatId = null;
+    lastT = 0;
+  }
+
+  function counts() {
+    return { particles: particles.length, pops: pops.length };
   }
 
   // 5-point star centered in the golden cell: gold fill, green edge.
@@ -117,6 +280,8 @@
   }
 
   window.SnakeRender = {
-    draw: draw
+    draw: draw,
+    resetEffects: resetEffects,
+    counts: counts
   };
 })();

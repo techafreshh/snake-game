@@ -23,7 +23,13 @@
     MODE_WRAP_KEY: 'snake-mode-wrap',
     OBSTACLES_KEY: 'snake-mode-obstacles',
     PRE_SPAWN_BLOCKS: 3,
-    OBSTACLE_SAFE_RADIUS: 4
+    OBSTACLE_SAFE_RADIUS: 4,
+    PARTICLE_COUNT: 10,
+    PARTICLE_MS: 400,
+    MAX_PARTICLES: 120,
+    POP_MS: 700,
+    POP_RISE_PX: 48,
+    MAX_POPS: 8
   };
 
   var state = {
@@ -48,12 +54,16 @@
     obstacleBlocks: [],
     isNewBest: false,
     foodsEaten: 0,
+    // Last eat event for renderer juice: { x, y, kind, points, id } or null.
+    // kind is 'food' | 'golden' | 'slow'. Never cleared except on reset.
+    lastEat: null,
     status: 'title'
   };
 
   var canvas = null;
   var accumulator = 0;
   var lastTime = 0;
+  var eatSeq = 0;
   var onFrame = null;
 
   function loadBest() {
@@ -148,6 +158,7 @@
     state.golden = null;
     state.slow = null;
     state.slowUntil = 0;
+    state.lastEat = null;
     placeFood();
     if (state.obstaclesEnabled) {
       spawnObstacles(CONFIG.PRE_SPAWN_BLOCKS);
@@ -483,6 +494,7 @@
     state.snake.unshift({ x: nx, y: ny });
     if (eating) {
       state.score += CONFIG.SCORE_PER_FOOD;
+      state.lastEat = { x: nx, y: ny, kind: 'food', points: CONFIG.SCORE_PER_FOOD, id: ++eatSeq };
       maybeSaveBest();
       state.foodsEaten += 1;
       placeFood();
@@ -504,6 +516,7 @@
       // The unshift/pop above nets 0 for a non-food step; duplicating
       // the tail GOLDEN_GROWTH times yields the immediate +2 length.
       state.score += CONFIG.GOLDEN_SCORE;
+      state.lastEat = { x: nx, y: ny, kind: 'golden', points: CONFIG.GOLDEN_SCORE, id: ++eatSeq };
       var tail = state.snake[state.snake.length - 1];
       for (var gi = 0; gi < CONFIG.GOLDEN_GROWTH; gi++) {
         state.snake.push({ x: tail.x, y: tail.y });
@@ -516,6 +529,7 @@
       // Refreshes the effect window when eaten while already active.
       state.slow = null;
       state.slowUntil = Date.now() + CONFIG.SLOW_DURATION_MS;
+      state.lastEat = { x: nx, y: ny, kind: 'slow', points: 0, id: ++eatSeq };
     }
     if (wrapped) {
       // Suppress interpolation streak across the board: the renderer
