@@ -10,7 +10,8 @@
     SPEED_DECAY: 0.975,
     CELL_PX: 20,
     SCORE_PER_FOOD: 10,
-    BEST_KEY: 'snake-best'
+    BEST_KEY: 'snake-best',
+    MODE_WRAP_KEY: 'snake-mode-wrap'
   };
 
   var state = {
@@ -21,6 +22,7 @@
     food: { x: 5, y: 5 },
     score: 0,
     best: 0,
+    wrap: false,
     isNewBest: false,
     foodsEaten: 0,
     status: 'title'
@@ -56,6 +58,21 @@
     } catch (e) {}
   }
 
+  function loadWrap() {
+    try {
+      var raw = window.localStorage.getItem(CONFIG.MODE_WRAP_KEY);
+      return raw === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveWrap() {
+    try {
+      window.localStorage.setItem(CONFIG.MODE_WRAP_KEY, state.wrap ? '1' : '0');
+    } catch (e) {}
+  }
+
   function resetGame() {
     var c = Math.floor(CONFIG.GRID_SIZE / 2);
     state.snake = [
@@ -67,6 +84,7 @@
     state.queue = [];
     state.score = 0;
     state.best = loadBest();
+    state.wrap = loadWrap();
     state.isNewBest = false;
     state.foodsEaten = 0;
     state.status = 'title';
@@ -159,11 +177,18 @@
     var ny = head.y + state.dir.y;
 
     // Wall death (Classic rules: walls kill).
+    var wrapped = false;
     if (nx < 0 || ny < 0 || nx >= CONFIG.GRID_SIZE || ny >= CONFIG.GRID_SIZE) {
-      maybeSaveBest();
-      state.isNewBest = (state.score > 0 && state.score >= state.best);
-      state.status = 'over';
-      return;
+      if (state.wrap) {
+        nx = (nx + CONFIG.GRID_SIZE) % CONFIG.GRID_SIZE;
+        ny = (ny + CONFIG.GRID_SIZE) % CONFIG.GRID_SIZE;
+        wrapped = true;
+      } else {
+        maybeSaveBest();
+        state.isNewBest = (state.score > 0 && state.score >= state.best);
+        state.status = 'over';
+        return;
+      }
     }
     // Self death. The tail cell is allowed when it will move away,
     // i.e. when this step does not eat food.
@@ -188,6 +213,11 @@
       placeFood();
     } else {
       state.snake.pop();
+    }
+    if (wrapped) {
+      // Suppress interpolation streak across the board: the renderer
+      // lerps prevSnake -> snake, so anchor prev head at the wrapped head.
+      state.prevSnake[0] = { x: nx, y: ny };
     }
   }
 
@@ -256,6 +286,13 @@
     placeFood: placeFood,
     getState: function () {
       return state;
+    },
+    getWrap: function () {
+      return state.wrap;
+    },
+    setWrap: function (v) {
+      state.wrap = !!v;
+      saveWrap();
     },
     setOnFrame: function (cb) {
       onFrame = cb;

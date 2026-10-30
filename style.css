@@ -49,3 +49,20 @@ canvas#game {
 .overlay.hidden { display: none; }
 #new-best.hidden { display: none; }
 .overlay p { margin: 4px 12px; }
+#mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+#mode-toggle button {
+  font: inherit;
+  background: #000;
+  color: #33ff33;
+  border: 2px solid #33ff33;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+#mode-toggle button.selected {
+  background: #33ff33;
+  color: #000;
+}
