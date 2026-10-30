@@ -37,6 +37,13 @@
     if (best) {
       best.textContent = 'BEST ' + st.best;
     }
+    var slowEl = document.getElementById('slow');
+    if (slowEl) {
+      var slowLeft = (typeof window.SnakeGame.getSlowRemaining === 'function')
+        ? window.SnakeGame.getSlowRemaining()
+        : 0;
+      slowEl.textContent = slowLeft > 0 ? 'SLOW ' + Math.ceil(slowLeft / 1000) + 's' : '';
+    }
     if (title) {
       title.classList.toggle('hidden', st.status !== 'title');
     }
