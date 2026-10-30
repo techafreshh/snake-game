@@ -85,6 +85,20 @@
       ctx.fillRect(fx * cell, fy * cell, cell, cell);
     }
 
+    // Death flash: alternating red/green full-canvas wash for 300ms
+    // after diedAt so the kill moment reads instantly. Square-wave
+    // alternation mirrors the golden/slow blink idiom above.
+    if (state.status === 'over' && state.diedAt) {
+      var deathElapsed = Date.now() - state.diedAt;
+      if (deathElapsed >= 0 && deathElapsed < 300) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = (Math.floor(deathElapsed / 75) % 2 === 0) ? '#ff0000' : '#33ff33';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      }
+    }
+
     drawEffects(ctx, state, config, cell);
   }
 
