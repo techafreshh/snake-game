@@ -397,6 +397,30 @@
     state.status = 'playing';
   }
 
+  function pause() {
+    if (state.status !== 'playing') {
+      return;
+    }
+    state.status = 'paused';
+    accumulator = 0;
+  }
+
+  function resume() {
+    if (state.status !== 'paused') {
+      return;
+    }
+    state.status = 'playing';
+    accumulator = 0;
+  }
+
+  function togglePause() {
+    if (state.status === 'playing') {
+      pause();
+    } else if (state.status === 'paused') {
+      resume();
+    }
+  }
+
   function step() {
     if (state.status !== 'playing') {
       return;
@@ -502,9 +526,12 @@
 
   function frame(now) {
     // Golden/slow despawn runs on wall-clock time every frame, so expiry
-    // happens even between ticks and while the snake idles.
-    updateGolden(Date.now());
-    updateSlow(Date.now());
+    // happens even between ticks and while the snake idles. Skipped while
+    // paused so timed pickups do not expire mid-pause.
+    if (state.status !== 'paused') {
+      updateGolden(Date.now());
+      updateSlow(Date.now());
+    }
     if (!lastTime) {
       lastTime = now;
     }
@@ -554,6 +581,9 @@
     CONFIG: CONFIG,
     init: init,
     start: start,
+    pause: pause,
+    resume: resume,
+    togglePause: togglePause,
     resetGame: resetGame,
     setDirection: setDirection,
     step: step,
