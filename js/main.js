@@ -49,11 +49,42 @@
     if (newBest) {
       newBest.classList.toggle('hidden', !(st.status === 'over' && st.isNewBest));
     }
+    var wrap = (typeof window.SnakeGame.getWrap === 'function')
+      ? window.SnakeGame.getWrap()
+      : !!st.wrap;
+    var classicBtn = document.getElementById('mode-classic');
+    var wrapBtn = document.getElementById('mode-wrap');
+    if (classicBtn) {
+      classicBtn.classList.toggle('selected', !wrap);
+      classicBtn.setAttribute('aria-pressed', !wrap ? 'true' : 'false');
+    }
+    if (wrapBtn) {
+      wrapBtn.classList.toggle('selected', !!wrap);
+      wrapBtn.setAttribute('aria-pressed', wrap ? 'true' : 'false');
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
     window.SnakeGame.init('game');
     window.SnakeGame.setOnFrame(syncDom);
+    var classicBtn = document.getElementById('mode-classic');
+    var wrapBtn = document.getElementById('mode-wrap');
+    if (classicBtn) {
+      classicBtn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        window.SnakeGame.setWrap(false);
+        syncDom(window.SnakeGame.getState());
+      });
+    }
+    if (wrapBtn) {
+      wrapBtn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        window.SnakeGame.setWrap(true);
+        syncDom(window.SnakeGame.getState());
+      });
+    }
     syncDom(window.SnakeGame.getState());
 
     document.addEventListener('keydown', function (ev) {
