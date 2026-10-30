@@ -7,12 +7,17 @@
   font-display: swap;
 }
 * { box-sizing: border-box; }
+html {
+  touch-action: none;
+  overscroll-behavior: none;
+}
 body {
   margin: 0;
   background: #000;
   color: #33ff33;
   font-family: 'Press Start 2P', "Courier New", Courier, monospace;
   touch-action: none;
+  overscroll-behavior: none;
 }
 .wrap {
   min-height: 100vh;
@@ -26,7 +31,10 @@ body {
 h1 { margin: 0; letter-spacing: 8px; }
 #score-bar { font-size: 20px; font-weight: bold; }
 #slow { color: #33ffff; }
-.stage { position: relative; }
+.stage {
+  position: relative;
+  touch-action: none;
+}
 canvas#game {
   display: block;
   width: 480px;
@@ -34,6 +42,8 @@ canvas#game {
   background: #000;
   border: 2px solid #33ff33;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .overlay {
   position: absolute;
@@ -46,6 +56,9 @@ canvas#game {
   text-align: center;
   background: rgba(0, 0, 0, 0.75);
   font-weight: bold;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .overlay.hidden { display: none; }
 #new-best.hidden { display: none; }
