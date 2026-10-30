@@ -96,6 +96,22 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     window.SnakeGame.init('game');
+    // DPR-aware backing store: fit once at boot, re-fit on viewport
+    // changes and re-draw the live state so the board never blurs.
+    function refitAndRedraw() {
+      var c = document.getElementById('game');
+      if (!c || !window.SnakeRender || typeof window.SnakeRender.fitCanvas !== 'function') {
+        return;
+      }
+      window.SnakeRender.fitCanvas(c);
+      if (typeof window.SnakeRender.draw === 'function' && window.SnakeGame &&
+        typeof window.SnakeGame.getState === 'function' && window.SnakeGame.CONFIG) {
+        window.SnakeRender.draw(c, window.SnakeGame.getState(), window.SnakeGame.CONFIG, 1);
+      }
+    }
+    refitAndRedraw();
+    window.addEventListener('resize', refitAndRedraw);
+    window.addEventListener('orientationchange', refitAndRedraw);
     // Normalize a missing or corrupt mute flag to unmuted ("0").
     try {
       var muteRaw = window.localStorage.getItem('snake-muted');

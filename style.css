@@ -18,27 +18,46 @@ body {
   font-family: 'Press Start 2P', "Courier New", Courier, monospace;
   touch-action: none;
   overscroll-behavior: none;
+  overflow-x: hidden;
 }
 .wrap {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 16px;
+  max-width: 100%;
 }
-h1 { margin: 0; letter-spacing: 8px; }
-#score-bar { font-size: 20px; font-weight: bold; }
+h1 { margin: 0; letter-spacing: 8px; font-size: clamp(18px, 6vw, 32px); }
+#score-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(12px, 4vw, 20px);
+  font-weight: bold;
+  max-width: 100%;
+  text-align: center;
+}
 #slow { color: #33ffff; }
 .stage {
   position: relative;
   touch-action: none;
+  max-width: 100%;
+  display: flex;
+  justify-content: center;
 }
 canvas#game {
   display: block;
-  width: 480px;
-  height: 480px;
+  width: min(480px, calc(100vw - 32px), calc(100vh - 260px));
+  width: min(480px, calc(100vw - 32px), calc(100dvh - 260px));
+  height: auto;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
   background: #000;
   border: 2px solid #33ff33;
   touch-action: none;
@@ -56,13 +75,16 @@ canvas#game {
   text-align: center;
   background: rgba(0, 0, 0, 0.75);
   font-weight: bold;
+  font-size: clamp(11px, 3.5vw, 16px);
+  padding: 12px;
+  overflow: hidden;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 .overlay.hidden { display: none; }
 #new-best.hidden { display: none; }
-.overlay p { margin: 4px 12px; }
+.overlay p { margin: 4px 12px; overflow-wrap: anywhere; max-width: 100%; }
 #mode-toggle {
   display: flex;
   gap: 8px;
@@ -91,4 +113,8 @@ canvas#game {
   border: 2px solid #33ff33;
   padding: 8px 12px;
   cursor: pointer;
+}
+@media (max-width: 480px) {
+  .wrap { gap: 6px; padding: 12px; }
+  h1 { letter-spacing: 4px; }
 }
