@@ -40,6 +40,21 @@
       }
     }
 
+    // Slow-time: cyan clock glyph with two hands. Skipped while expired,
+    // and square-wave blinked in the final blink window like golden.
+    if (state.slow) {
+      var slowLifetime = config.SLOW_LIFETIME_MS || 8000;
+      var slowBlinkMs = config.SLOW_BLINK_MS || 2000;
+      var slowElapsed = Date.now() - state.slow.spawnedAt;
+      var slowRemaining = slowLifetime - slowElapsed;
+      if (slowRemaining > 0) {
+        var slowOff = slowRemaining <= slowBlinkMs && (Math.floor(slowElapsed / 125) % 2 === 1);
+        if (!slowOff) {
+          drawClock(ctx, state.slow.x, state.slow.y, cell);
+        }
+      }
+    }
+
     var prev = state.prevSnake;
     var canLerp = prev &&
       prev.length === state.snake.length;
@@ -80,6 +95,25 @@
     ctx.fill();
     ctx.strokeStyle = '#33ff33';
     ctx.stroke();
+  }
+
+  // Clock glyph centered in the slow cell: cyan ring with two hands.
+  function drawClock(ctx, sx, sy, cell) {
+    var cx = (sx + 0.5) * cell;
+    var cy = (sy + 0.5) * cell;
+    var r = cell * 0.38;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = '#33ffff';
+    ctx.lineWidth = Math.max(2, cell * 0.08);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx, cy - r * 0.7);
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + r * 0.55, cy);
+    ctx.stroke();
+    ctx.lineWidth = 1;
   }
 
   window.SnakeRender = {

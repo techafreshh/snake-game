@@ -25,6 +25,7 @@ body {
 }
 h1 { margin: 0; letter-spacing: 8px; }
 #score-bar { font-size: 20px; font-weight: bold; }
+#slow { color: #33ffff; }
 .stage { position: relative; }
 canvas#game {
   display: block;
