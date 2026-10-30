@@ -6,7 +6,7 @@ Built by the [pi-dark-factory](https://github.com/techafreshh/pi-dark-factory) �
 
 ## Run it
 
-Open `index.html` in any browser (double-click works — no server needed), or serve the folder:
+Open `index.html` in any browser (double-click works over `file://` — no server needed), or serve the folder:
 
 ```bash
 python3 -m http.server 8000
@@ -22,6 +22,10 @@ python3 -m http.server 8000
 | Space / Enter / tap | Start · restart |
 | P | Pause |
 | M | Mute |
+
+Swipe uses `touch-action: none` so the page never scrolls/zooms during play.
+
+Persistence (localStorage): best score in `snake-best` (number), sound preference in `snake-muted` (`"1"` muted / `"0"` audible).
 
 ## Modes
 
@@ -40,6 +44,8 @@ npx wrangler login
 npx wrangler pages project create snake-game --production-branch=main
 npx wrangler pages deploy . --project-name=snake-game   # → https://snake-game.pages.dev
 ```
+
+Redeploy after notable merges with the same `npx wrangler pages deploy .` command; for headless CI set `CLOUDFLARE_API_TOKEN` instead of `npx wrangler login`.
 
 ## Repo notes
 
