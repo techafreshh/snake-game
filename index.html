@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snake</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="wrap">
+<h1>SNAKE</h1>
+<div id="score-bar"><span id="score">SCORE 0</span></div>
+<div class="stage">
+<canvas id="game" width="480" height="480"></canvas>
+<div id="title-overlay" class="overlay">
+<p>PRESS SPACE OR AN ARROW TO PLAY</p>
+</div>
+<div id="gameover-overlay" class="overlay hidden">
+<p>GAME OVER</p>
+<p id="final-score">SCORE 0</p>
+<p>PRESS SPACE TO RESTART</p>
+</div>
+</div>
+</main>
+<script src="js/game.js"></script>
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
