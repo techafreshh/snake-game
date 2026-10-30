@@ -46,6 +46,8 @@
     slow: null,
     // Effect-expiry timestamp (wall clock); active while Date.now() < slowUntil.
     slowUntil: 0,
+    // Death timestamp (wall clock); drives the red-green flash + shake.
+    diedAt: 0,
     score: 0,
     best: 0,
     wrap: false,
@@ -158,6 +160,7 @@
     state.golden = null;
     state.slow = null;
     state.slowUntil = 0;
+    state.diedAt = 0;
     state.lastEat = null;
     placeFood();
     if (state.obstaclesEnabled) {
@@ -459,6 +462,7 @@
         maybeSaveBest();
         state.isNewBest = (state.score > 0 && state.score >= state.best);
         state.status = 'over';
+        state.diedAt = Date.now();
         return;
       }
     }
@@ -480,6 +484,7 @@
         maybeSaveBest();
         state.isNewBest = (state.score > 0 && state.score >= state.best);
         state.status = 'over';
+        state.diedAt = Date.now();
         return;
       }
     }
@@ -488,6 +493,7 @@
       maybeSaveBest();
       state.isNewBest = (state.score > 0 && state.score >= state.best);
       state.status = 'over';
+      state.diedAt = Date.now();
       return;
     }
 

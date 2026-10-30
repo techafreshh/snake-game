@@ -21,6 +21,10 @@
     var st = window.SnakeGame.getState();
     if (st.status === 'title' || st.status === 'over') {
       window.SnakeGame.start();
+      var gameCanvas = document.getElementById('game');
+      if (gameCanvas) {
+        gameCanvas.style.transform = '';
+      }
       if (window.SnakeAudio) {
         window.SnakeAudio.unlock();
         window.SnakeAudio.play('start');
@@ -127,6 +131,22 @@
       }
       lastScore = st.score;
       lastStatus = st.status;
+      var shakeCanvas = document.getElementById('game');
+      if (shakeCanvas) {
+        var shaking = st.status === 'over' &&
+          typeof st.diedAt === 'number' && st.diedAt &&
+          (Date.now() - st.diedAt) < 150;
+        if (shaking) {
+          var dx = Math.floor(Math.random() * 13) - 6;
+          var dy = Math.floor(Math.random() * 13) - 6;
+          if (dx === 0 && dy === 0) {
+            dx = 6;
+          }
+          shakeCanvas.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+        } else {
+          shakeCanvas.style.transform = '';
+        }
+      }
       syncDom(st);
     });
     var classicBtn = document.getElementById('mode-classic');
@@ -158,6 +178,12 @@
           window.SnakeGame.resetGame();
         }
         syncDom(window.SnakeGame.getState());
+      });
+    }
+    var overOverlay = document.getElementById('gameover-overlay');
+    if (overOverlay) {
+      overOverlay.addEventListener('click', function () {
+        beginOrRestart();
       });
     }
     syncDom(window.SnakeGame.getState());
