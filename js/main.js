@@ -20,6 +20,9 @@
   function beginOrRestart() {
     var st = window.SnakeGame.getState();
     if (st.status === 'title' || st.status === 'over') {
+      if (window.SnakeRender && typeof window.SnakeRender.resetConfetti === 'function') {
+        window.SnakeRender.resetConfetti();
+      }
       window.SnakeGame.start();
       var gameCanvas = document.getElementById('game');
       if (gameCanvas) {
@@ -128,6 +131,10 @@
         if (lastStatus !== 'over' && st.status === 'over') {
           window.SnakeAudio.play('death');
         }
+      }
+      if (lastStatus !== 'over' && st.status === 'over' && st.isNewBest &&
+        window.SnakeRender && typeof window.SnakeRender.celebrateNewBest === 'function') {
+        window.SnakeRender.celebrateNewBest();
       }
       lastScore = st.score;
       lastStatus = st.status;

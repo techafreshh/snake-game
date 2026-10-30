@@ -293,9 +293,38 @@
     ctx.lineWidth = 1;
   }
 
+  // NEW BEST celebration: single confetti burst, skipped when the player
+  // prefers reduced motion. Never consults mute state: visuals fire
+  // even while sound is muted. Never throws when confetti/matchMedia
+  // is missing (file:// safe).
+  function celebrateNewBest() {
+    try {
+      if (typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+      }
+    } catch (e) {}
+    try {
+      if (typeof window.confetti === 'function') {
+        window.confetti({ particleCount: 100, spread: 75, origin: { y: 0.6 } });
+      }
+    } catch (e) {}
+  }
+
+  // Best-effort cleanup so a previous burst does not linger across games.
+  function resetConfetti() {
+    try {
+      if (window.confetti && typeof window.confetti.reset === 'function') {
+        window.confetti.reset();
+      }
+    } catch (e) {}
+  }
+
   window.SnakeRender = {
     draw: draw,
     resetEffects: resetEffects,
-    counts: counts
+    counts: counts,
+    celebrateNewBest: celebrateNewBest,
+    resetConfetti: resetConfetti
   };
 })();
