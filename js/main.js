@@ -33,6 +33,7 @@
     var best = document.getElementById('best');
     var title = document.getElementById('title-overlay');
     var over = document.getElementById('gameover-overlay');
+    var pause = document.getElementById('pause-overlay');
     var finalScore = document.getElementById('final-score');
     var newBest = document.getElementById('new-best');
     if (score) {
@@ -53,6 +54,9 @@
     }
     if (over) {
       over.classList.toggle('hidden', st.status !== 'over');
+    }
+    if (pause) {
+      pause.classList.toggle('hidden', st.status !== 'paused');
     }
     if (finalScore && st.status === 'over') {
       finalScore.textContent = 'SCORE ' + st.score;
@@ -166,16 +170,33 @@
         }
         return;
       }
+      if (ev.key === 'p' || ev.key === 'P') {
+        window.SnakeGame.togglePause();
+        return;
+      }
       if (ev.key === ' ' || ev.key === 'Enter') {
         ev.preventDefault();
+        if (window.SnakeGame.getState().status === 'paused') {
+          window.SnakeGame.resume();
+          return;
+        }
         beginOrRestart();
         return;
       }
       var d = DIRS[ev.key];
       if (d) {
         ev.preventDefault();
-        beginOrRestart();
+        if (window.SnakeGame.getState().status === 'paused') {
+          window.SnakeGame.resume();
+        } else {
+          beginOrRestart();
+        }
         window.SnakeGame.setDirection(d[0], d[1]);
+      }
+    });
+    window.addEventListener('blur', function () {
+      if (window.SnakeGame.getState().status === 'playing') {
+        window.SnakeGame.pause();
       }
     });
   });
