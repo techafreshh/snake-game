@@ -26,11 +26,16 @@
 
   function syncDom(st) {
     var score = document.getElementById('score');
+    var best = document.getElementById('best');
     var title = document.getElementById('title-overlay');
     var over = document.getElementById('gameover-overlay');
     var finalScore = document.getElementById('final-score');
+    var newBest = document.getElementById('new-best');
     if (score) {
       score.textContent = 'SCORE ' + st.score;
+    }
+    if (best) {
+      best.textContent = 'BEST ' + st.best;
     }
     if (title) {
       title.classList.toggle('hidden', st.status !== 'title');
@@ -40,6 +45,9 @@
     }
     if (finalScore && st.status === 'over') {
       finalScore.textContent = 'SCORE ' + st.score;
+    }
+    if (newBest) {
+      newBest.classList.toggle('hidden', !(st.status === 'over' && st.isNewBest));
     }
   }
 

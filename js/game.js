@@ -9,7 +9,8 @@
     MIN_TICK_MS: 60,
     SPEED_DECAY: 0.975,
     CELL_PX: 20,
-    SCORE_PER_FOOD: 10
+    SCORE_PER_FOOD: 10,
+    BEST_KEY: 'snake-best'
   };
 
   var state = {
@@ -19,6 +20,8 @@
     queue: [],
     food: { x: 5, y: 5 },
     score: 0,
+    best: 0,
+    isNewBest: false,
     foodsEaten: 0,
     status: 'title'
   };
@@ -27,6 +30,31 @@
   var accumulator = 0;
   var lastTime = 0;
   var onFrame = null;
+
+  function loadBest() {
+    try {
+      var raw = window.localStorage.getItem(CONFIG.BEST_KEY);
+      if (raw === null || raw === undefined) {
+        return 0;
+      }
+      var n = parseInt(raw, 10);
+      if (isNaN(n) || n < 0) {
+        return 0;
+      }
+      return n;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function maybeSaveBest() {
+    try {
+      if (state.score > state.best) {
+        state.best = state.score;
+        window.localStorage.setItem(CONFIG.BEST_KEY, String(state.best));
+      }
+    } catch (e) {}
+  }
 
   function resetGame() {
     var c = Math.floor(CONFIG.GRID_SIZE / 2);
@@ -38,6 +66,8 @@
     state.dir = { x: 1, y: 0 };
     state.queue = [];
     state.score = 0;
+    state.best = loadBest();
+    state.isNewBest = false;
     state.foodsEaten = 0;
     state.status = 'title';
     accumulator = 0;
@@ -130,6 +160,8 @@
 
     // Wall death (Classic rules: walls kill).
     if (nx < 0 || ny < 0 || nx >= CONFIG.GRID_SIZE || ny >= CONFIG.GRID_SIZE) {
+      maybeSaveBest();
+      state.isNewBest = (state.score > 0 && state.score >= state.best);
       state.status = 'over';
       return;
     }
@@ -141,6 +173,8 @@
         continue;
       }
       if (state.snake[i].x === nx && state.snake[i].y === ny) {
+        maybeSaveBest();
+        state.isNewBest = (state.score > 0 && state.score >= state.best);
         state.status = 'over';
         return;
       }
@@ -149,6 +183,7 @@
     state.snake.unshift({ x: nx, y: ny });
     if (eating) {
       state.score += CONFIG.SCORE_PER_FOOD;
+      maybeSaveBest();
       state.foodsEaten += 1;
       placeFood();
     } else {

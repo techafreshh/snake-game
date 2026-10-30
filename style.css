@@ -47,4 +47,5 @@ canvas#game {
   font-weight: bold;
 }
 .overlay.hidden { display: none; }
+#new-best.hidden { display: none; }
 .overlay p { margin: 4px 12px; }
