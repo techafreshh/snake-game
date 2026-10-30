@@ -20,12 +20,21 @@
 
   function draw(canvas, state, config, alpha) {
     var ctx = canvas.getContext('2d');
-    var cell = config.CELL_PX;
+    var cssSize = cssBoardSize(canvas, config);
+    var dpr = backingDpr(canvas, cssSize);
+    try {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    } catch (e) {}
+    var cell = cssSize / config.GRID_SIZE;
+    if (!(cell > 0) || !isFinite(cell)) {
+      cell = config.CELL_PX;
+      cssSize = cell * config.GRID_SIZE;
+    }
     var a = (typeof alpha === 'number' && isFinite(alpha))
       ? Math.min(Math.max(alpha, 0), 1)
       : 1;
     ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, cssSize, cssSize);
 
     if (state.obstacles && state.obstacles.length > 0) {
       ctx.fillStyle = '#808080';
@@ -94,7 +103,7 @@
         ctx.save();
         ctx.globalAlpha = 0.5;
         ctx.fillStyle = (Math.floor(deathElapsed / 75) % 2 === 0) ? '#ff0000' : '#33ff33';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, cssSize, cssSize);
         ctx.restore();
       }
     }
@@ -320,8 +329,98 @@
     } catch (e) {}
   }
 
+  // Responsive backing store: size the canvas bitmap to CSS px times
+  // devicePixelRatio (clamped to 3) so the board stays sharp on hidpi
+  // phones. Returns the CSS board size S.
+  function cssBoardSize(canvas, config) {
+    try {
+      var w = 0;
+      // Prefer the border-box rect: with box-sizing it equals the CSS
+      // width the probe sets (clientWidth excludes the 2px border).
+      if (canvas.getBoundingClientRect) {
+        w = canvas.getBoundingClientRect().width;
+      }
+      if (!(w > 0) && canvas.clientWidth) {
+        w = canvas.clientWidth;
+      }
+      if (w > 0 && isFinite(w)) {
+        if (w < 1) {
+          w = 1;
+        }
+        if (w > 480) {
+          w = 480;
+        }
+        return w;
+      }
+    } catch (e) {}
+    try {
+      if (canvas.width && window.devicePixelRatio) {
+        var d = window.devicePixelRatio;
+        if (d > 0 && isFinite(d) && canvas.width / d >= 1) {
+          return canvas.width / d;
+        }
+      }
+    } catch (e2) {}
+    if (config && config.GRID_SIZE && config.CELL_PX) {
+      return config.GRID_SIZE * config.CELL_PX;
+    }
+    return 480;
+  }
+
+  function backingDpr(canvas, cssSize) {
+    try {
+      if (cssSize > 0 && isFinite(cssSize) &&
+        canvas.width > 0 && isFinite(canvas.width)) {
+        var ratio = canvas.width / cssSize;
+        if (ratio >= 1 && ratio <= 3.5 && isFinite(ratio)) {
+          return ratio;
+        }
+      }
+    } catch (e) {}
+    try {
+      var dpr = window.devicePixelRatio || 1;
+      if (!(dpr >= 1) || !isFinite(dpr)) {
+        return 1;
+      }
+      return Math.min(dpr, 3);
+    } catch (e2) {
+      return 1;
+    }
+  }
+
+  // fitCanvas(canvas): sync the bitmap to CSS size times DPR.
+  // Reads CSS size S, clamps to 1..480, then sets a square backing
+  // store of round(S * dpr). Safe no-op when canvas is missing.
+  function fitCanvas(canvas) {
+    try {
+      if (!canvas) {
+        return 0;
+      }
+      var s = cssBoardSize(canvas, { GRID_SIZE: 24, CELL_PX: 20 });
+      var dpr = 1;
+      try {
+        dpr = window.devicePixelRatio || 1;
+      } catch (e) {
+        dpr = 1;
+      }
+      if (!(dpr >= 1) || !isFinite(dpr)) {
+        dpr = 1;
+      }
+      if (dpr > 3) {
+        dpr = 3;
+      }
+      var px = Math.max(1, Math.round(s * dpr));
+      canvas.width = px;
+      canvas.height = px;
+      return s;
+    } catch (e2) {
+      return 0;
+    }
+  }
+
   window.SnakeRender = {
     draw: draw,
+    fitCanvas: fitCanvas,
     resetEffects: resetEffects,
     counts: counts,
     celebrateNewBest: celebrateNewBest,
