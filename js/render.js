@@ -25,6 +25,21 @@
       ctx.fillRect(state.food.x * cell, state.food.y * cell, cell, cell);
     }
 
+    // Golden apple: 5-point gold star with a green edge. Skipped while
+    // expired, and square-wave blinked in the final blink window.
+    if (state.golden) {
+      var lifetime = config.GOLDEN_LIFETIME_MS || 8000;
+      var blinkMs = config.GOLDEN_BLINK_MS || 2000;
+      var elapsed = Date.now() - state.golden.spawnedAt;
+      var remaining = lifetime - elapsed;
+      if (remaining > 0) {
+        var off = remaining <= blinkMs && (Math.floor(elapsed / 125) % 2 === 1);
+        if (!off) {
+          drawGoldenStar(ctx, state.golden.x, state.golden.y, cell);
+        }
+      }
+    }
+
     var prev = state.prevSnake;
     var canLerp = prev &&
       prev.length === state.snake.length;
@@ -40,6 +55,31 @@
       ctx.fillStyle = i === 0 ? '#99ff99' : '#33ff33';
       ctx.fillRect(fx * cell, fy * cell, cell, cell);
     }
+  }
+
+  // 5-point star centered in the golden cell: gold fill, green edge.
+  function drawGoldenStar(ctx, gx, gy, cell) {
+    var cx = (gx + 0.5) * cell;
+    var cy = (gy + 0.5) * cell;
+    var outer = cell * 0.45;
+    var inner = cell * 0.2;
+    ctx.beginPath();
+    for (var i = 0; i < 10; i++) {
+      var r = (i % 2 === 0) ? outer : inner;
+      var ang = -Math.PI / 2 + (i * Math.PI) / 5;
+      var px = cx + r * Math.cos(ang);
+      var py = cy + r * Math.sin(ang);
+      if (i === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#ffd700';
+    ctx.fill();
+    ctx.strokeStyle = '#33ff33';
+    ctx.stroke();
   }
 
   window.SnakeRender = {

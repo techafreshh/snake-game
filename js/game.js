@@ -10,6 +10,11 @@
     SPEED_DECAY: 0.975,
     CELL_PX: 20,
     SCORE_PER_FOOD: 10,
+    GOLDEN_CHANCE: 0.15,
+    GOLDEN_SCORE: 50,
+    GOLDEN_GROWTH: 2,
+    GOLDEN_LIFETIME_MS: 8000,
+    GOLDEN_BLINK_MS: 2000,
     BEST_KEY: 'snake-best',
     MODE_WRAP_KEY: 'snake-mode-wrap',
     OBSTACLES_KEY: 'snake-mode-obstacles',
@@ -23,6 +28,9 @@
     dir: { x: 1, y: 0 },
     queue: [],
     food: { x: 5, y: 5 },
+    // At most one golden apple on board: { x, y, spawnedAt } or null.
+    // It expires at spawnedAt + CONFIG.GOLDEN_LIFETIME_MS (wall clock).
+    golden: null,
     score: 0,
     best: 0,
     wrap: false,
@@ -128,6 +136,7 @@
     state.status = 'title';
     accumulator = 0;
     lastTime = 0;
+    state.golden = null;
     placeFood();
     if (state.obstaclesEnabled) {
       spawnObstacles(CONFIG.PRE_SPAWN_BLOCKS);
@@ -238,6 +247,47 @@
     state.food = free[Math.floor(Math.random() * free.length)];
   }
 
+  // Golden apple: scarce timed pickup. At most one on board; the spawn
+  // cell avoids snake cells, the fresh food cell and obstacles (if any).
+  function spawnGolden() {
+    if (state.golden) {
+      return;
+    }
+    var free = [];
+    var x;
+    var y;
+    for (x = 0; x < CONFIG.GRID_SIZE; x++) {
+      for (y = 0; y < CONFIG.GRID_SIZE; y++) {
+        if (isOnSnake(x, y)) {
+          continue;
+        }
+        if (state.food && state.food.x === x && state.food.y === y) {
+          continue;
+        }
+        if (isOnObstacle(x, y)) {
+          continue;
+        }
+        free.push({ x: x, y: y });
+      }
+    }
+    if (free.length === 0) {
+      return;
+    }
+    var cell = free[Math.floor(Math.random() * free.length)];
+    state.golden = { x: cell.x, y: cell.y, spawnedAt: Date.now() };
+  }
+
+  // Wall-clock expiry sweep; safe to call on every step and frame.
+  function updateGolden(now) {
+    if (!state.golden) {
+      return;
+    }
+    var t = (typeof now === 'number' && isFinite(now)) ? now : Date.now();
+    if (t - state.golden.spawnedAt >= CONFIG.GOLDEN_LIFETIME_MS) {
+      state.golden = null;
+    }
+  }
+
   // Guard against reversing into the snake's own neck: compare with
   // the last effective direction (queue tail if buffered, else the
   // last applied direction), so quick double-turns queue fairly.
@@ -307,11 +357,16 @@
         return;
       }
     }
+    // Expire the golden apple first so a stale pickup can never be
+    // eaten on its expiry tick.
+    updateGolden(Date.now());
     // Self death. The tail cell is allowed when it will move away,
-    // i.e. when this step does not eat food.
+    // i.e. when this step does not grow (no food and no golden eat).
     var eating = state.food && nx === state.food.x && ny === state.food.y;
+    var goldenEating = state.golden && nx === state.golden.x && ny === state.golden.y;
+    var growing = eating || goldenEating;
     for (var i = 0; i < state.snake.length; i++) {
-      if (!eating && i === state.snake.length - 1) {
+      if (!growing && i === state.snake.length - 1) {
         continue;
       }
       if (state.snake[i].x === nx && state.snake[i].y === ny) {
@@ -338,8 +393,23 @@
       if (state.obstaclesEnabled && state.foodsEaten % 5 === 0) {
         spawnObstacles(1);
       }
+      // Scarce post-food spawn: only one power-up on board at a time.
+      if (!state.golden && Math.random() < CONFIG.GOLDEN_CHANCE) {
+        spawnGolden();
+      }
     } else {
       state.snake.pop();
+    }
+    if (goldenEating) {
+      // The unshift/pop above nets 0 for a non-food step; duplicating
+      // the tail GOLDEN_GROWTH times yields the immediate +2 length.
+      state.score += CONFIG.GOLDEN_SCORE;
+      var tail = state.snake[state.snake.length - 1];
+      for (var gi = 0; gi < CONFIG.GOLDEN_GROWTH; gi++) {
+        state.snake.push({ x: tail.x, y: tail.y });
+      }
+      state.golden = null;
+      maybeSaveBest();
     }
     if (wrapped) {
       // Suppress interpolation streak across the board: the renderer
@@ -349,6 +419,9 @@
   }
 
   function frame(now) {
+    // Golden despawn runs on wall-clock time every frame, so expiry
+    // happens even between ticks and while the snake idles.
+    updateGolden(Date.now());
     if (!lastTime) {
       lastTime = now;
     }
@@ -411,6 +484,8 @@
     },
     getTickMs: getTickMs,
     placeFood: placeFood,
+    spawnGolden: spawnGolden,
+    updateGolden: updateGolden,
     getState: function () {
       return state;
     },
