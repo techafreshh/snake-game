@@ -6,6 +6,8 @@
   var CONFIG = {
     GRID_SIZE: 24,
     TICK_MS: 150,
+    MIN_TICK_MS: 60,
+    SPEED_DECAY: 0.975,
     CELL_PX: 20,
     SCORE_PER_FOOD: 10
   };
@@ -14,9 +16,10 @@
     snake: [],
     prevSnake: [],
     dir: { x: 1, y: 0 },
-    queuedDir: null,
+    queue: [],
     food: { x: 5, y: 5 },
     score: 0,
+    foodsEaten: 0,
     status: 'title'
   };
 
@@ -33,8 +36,9 @@
       { x: c - 2, y: c }
     ];
     state.dir = { x: 1, y: 0 };
-    state.queuedDir = null;
+    state.queue = [];
     state.score = 0;
+    state.foodsEaten = 0;
     state.status = 'title';
     accumulator = 0;
     lastTime = 0;
@@ -70,15 +74,25 @@
   }
 
   // Guard against reversing into the snake's own neck: compare with
-  // the last applied direction, not the last pressed key.
+  // the last effective direction (queue tail if buffered, else the
+  // last applied direction), so quick double-turns queue fairly.
   function setDirection(x, y) {
-    if ((x === -state.dir.x && y === -state.dir.y) || (x === state.dir.x && y === state.dir.y)) {
+    var last = state.dir;
+    if (state.queue.length > 0) {
+      last = state.queue[state.queue.length - 1];
+    }
+    if ((x === last.x && y === last.y) || (x === -last.x && y === -last.y)) {
       return;
     }
-    if (state.queuedDir && x === -state.dir.x && y === -state.dir.y) {
+    if (state.queue.length >= 2) {
       return;
     }
-    state.queuedDir = { x: x, y: y };
+    state.queue.push({ x: x, y: y });
+  }
+
+  // Live tick interval: base decays per food eaten, floored at the minimum.
+  function getTickMs() {
+    return Math.max(CONFIG.MIN_TICK_MS, CONFIG.TICK_MS * Math.pow(CONFIG.SPEED_DECAY, state.foodsEaten));
   }
 
   // Deep-copy the snake so the renderer can lerp prev -> current.
@@ -102,13 +116,13 @@
     if (state.status !== 'playing') {
       return;
     }
-    if (state.queuedDir) {
-      // Re-check reversal at apply time so a fast double-turn
-      // can never reverse into the neck.
-      if (!(state.queuedDir.x === -state.dir.x && state.queuedDir.y === -state.dir.y)) {
-        state.dir = state.queuedDir;
+    if (state.queue.length > 0) {
+      // Re-check reversal at apply time so a queued turn that went
+      // stale can never reverse into the neck.
+      var entry = state.queue.shift();
+      if (!(entry.x === -state.dir.x && entry.y === -state.dir.y)) {
+        state.dir = entry;
       }
-      state.queuedDir = null;
     }
     var head = state.snake[0];
     var nx = head.x + state.dir.x;
@@ -135,6 +149,7 @@
     state.snake.unshift({ x: nx, y: ny });
     if (eating) {
       state.score += CONFIG.SCORE_PER_FOOD;
+      state.foodsEaten += 1;
       placeFood();
     } else {
       state.snake.pop();
@@ -150,16 +165,18 @@
     var alpha = 1;
     if (state.status === 'playing') {
       accumulator += dt;
-      while (accumulator >= CONFIG.TICK_MS) {
+      var tickMs = getTickMs();
+      while (accumulator >= tickMs) {
         snapshotPrev();
         step();
-        accumulator -= CONFIG.TICK_MS;
+        accumulator -= tickMs;
+        tickMs = getTickMs();
         if (state.status !== 'playing') {
           accumulator = 0;
           break;
         }
       }
-      alpha = Math.min(Math.max(accumulator / CONFIG.TICK_MS, 0), 1);
+      alpha = Math.min(Math.max(accumulator / tickMs, 0), 1);
     } else {
       accumulator = 0;
     }
@@ -198,8 +215,9 @@
       return accumulator;
     },
     getAlpha: function () {
-      return Math.min(Math.max(accumulator / CONFIG.TICK_MS, 0), 1);
+      return Math.min(Math.max(accumulator / getTickMs(), 0), 1);
     },
+    getTickMs: getTickMs,
     placeFood: placeFood,
     getState: function () {
       return state;
