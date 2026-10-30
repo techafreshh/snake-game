@@ -96,8 +96,11 @@
       return;
     }
     var t = trackedTouch(ev.changedTouches);
-    var endX = t ? t.clientX : anchorX;
-    var endY = t ? t.clientY : anchorY;
+    if (!t) {
+      return;
+    }
+    var endX = t.clientX;
+    var endY = t.clientY;
     var moved = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
     var dt = Date.now() - startTime;
     tracking = false;
@@ -111,7 +114,13 @@
     }
   }
 
-  function onTouchCancel() {
+  function onTouchCancel(ev) {
+    if (ev && ev.changedTouches) {
+      var t = trackedTouch(ev.changedTouches);
+      if (!t) {
+        return;
+      }
+    }
     tracking = false;
     touchId = null;
   }
