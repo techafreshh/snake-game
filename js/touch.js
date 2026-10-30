@@ -84,6 +84,7 @@
       dir = dy > 0 ? [0, 1] : [0, -1];
     }
     if (window.SnakeGame) {
+      beginOrRestart();
       window.SnakeGame.setDirection(dir[0], dir[1]);
     }
     anchorX = t.clientX;
