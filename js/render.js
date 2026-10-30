@@ -13,6 +13,13 @@
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    if (state.obstacles && state.obstacles.length > 0) {
+      ctx.fillStyle = '#808080';
+      for (var b = 0; b < state.obstacles.length; b++) {
+        ctx.fillRect(state.obstacles[b].x * cell, state.obstacles[b].y * cell, cell, cell);
+      }
+    }
+
     if (state.food) {
       ctx.fillStyle = '#33ff33';
       ctx.fillRect(state.food.x * cell, state.food.y * cell, cell, cell);
