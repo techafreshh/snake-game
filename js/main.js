@@ -21,6 +21,10 @@
     var st = window.SnakeGame.getState();
     if (st.status === 'title' || st.status === 'over') {
       window.SnakeGame.start();
+      if (window.SnakeAudio) {
+        window.SnakeAudio.unlock();
+        window.SnakeAudio.play('start');
+      }
     }
   }
 
@@ -81,7 +85,21 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     window.SnakeGame.init('game');
-    window.SnakeGame.setOnFrame(syncDom);
+    var lastScore = 0;
+    var lastStatus = 'title';
+    window.SnakeGame.setOnFrame(function (st) {
+      if (window.SnakeAudio) {
+        if (st.score > lastScore) {
+          window.SnakeAudio.play('eat');
+        }
+        if (lastStatus !== 'over' && st.status === 'over') {
+          window.SnakeAudio.play('death');
+        }
+      }
+      lastScore = st.score;
+      lastStatus = st.status;
+      syncDom(st);
+    });
     var classicBtn = document.getElementById('mode-classic');
     var wrapBtn = document.getElementById('mode-wrap');
     if (classicBtn) {
@@ -116,6 +134,12 @@
     syncDom(window.SnakeGame.getState());
 
     document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'm' || ev.key === 'M') {
+        if (window.SnakeAudio) {
+          window.SnakeAudio.toggleMuted();
+        }
+        return;
+      }
       if (ev.key === ' ' || ev.key === 'Enter') {
         ev.preventDefault();
         beginOrRestart();
