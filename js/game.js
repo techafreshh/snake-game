@@ -12,6 +12,7 @@
 
   var state = {
     snake: [],
+    prevSnake: [],
     dir: { x: 1, y: 0 },
     queuedDir: null,
     food: { x: 5, y: 5 },
@@ -20,7 +21,7 @@
   };
 
   var canvas = null;
-  var acc = 0;
+  var accumulator = 0;
   var lastTime = 0;
   var onFrame = null;
 
@@ -35,8 +36,10 @@
     state.queuedDir = null;
     state.score = 0;
     state.status = 'title';
-    acc = 0;
+    accumulator = 0;
+    lastTime = 0;
     placeFood();
+    snapshotPrev();
   }
 
   function isOnSnake(x, y) {
@@ -76,6 +79,13 @@
       return;
     }
     state.queuedDir = { x: x, y: y };
+  }
+
+  // Deep-copy the snake so the renderer can lerp prev -> current.
+  function snapshotPrev() {
+    state.prevSnake = state.snake.map(function (seg) {
+      return { x: seg.x, y: seg.y };
+    });
   }
 
   function start() {
@@ -135,25 +145,26 @@
     if (!lastTime) {
       lastTime = now;
     }
-    var dt = now - lastTime;
+    var dt = Math.min(now - lastTime, 100);
     lastTime = now;
-    // Clamp delta so a background tab does not cause a death spiral.
-    if (dt > 1000) {
-      dt = 1000;
-    }
+    var alpha = 1;
     if (state.status === 'playing') {
-      acc += dt;
-      while (acc >= CONFIG.TICK_MS) {
+      accumulator += dt;
+      while (accumulator >= CONFIG.TICK_MS) {
+        snapshotPrev();
         step();
-        acc -= CONFIG.TICK_MS;
+        accumulator -= CONFIG.TICK_MS;
         if (state.status !== 'playing') {
-          acc = 0;
+          accumulator = 0;
           break;
         }
       }
+      alpha = Math.min(Math.max(accumulator / CONFIG.TICK_MS, 0), 1);
+    } else {
+      accumulator = 0;
     }
     if (window.SnakeRender && canvas) {
-      window.SnakeRender.draw(canvas, state, CONFIG);
+      window.SnakeRender.draw(canvas, state, CONFIG, alpha);
     }
     if (onFrame) {
       onFrame(state);
@@ -169,7 +180,7 @@
     canvas = document.getElementById(canvasId);
     resetGame();
     if (window.SnakeRender && canvas) {
-      window.SnakeRender.draw(canvas, state, CONFIG);
+      window.SnakeRender.draw(canvas, state, CONFIG, 1);
     }
     window.requestAnimationFrame(loop);
   }
@@ -181,6 +192,14 @@
     resetGame: resetGame,
     setDirection: setDirection,
     step: step,
+    frame: frame,
+    loop: loop,
+    getAccumulator: function () {
+      return accumulator;
+    },
+    getAlpha: function () {
+      return Math.min(Math.max(accumulator / CONFIG.TICK_MS, 0), 1);
+    },
     placeFood: placeFood,
     getState: function () {
       return state;
