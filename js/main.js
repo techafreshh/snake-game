@@ -85,6 +85,31 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     window.SnakeGame.init('game');
+    // Normalize a missing or corrupt mute flag to unmuted ("0").
+    try {
+      var muteRaw = window.localStorage.getItem('snake-muted');
+      if (muteRaw !== '0' && muteRaw !== '1') {
+        window.localStorage.setItem('snake-muted', '0');
+      }
+    } catch (e) {}
+    function refreshMuteButton() {
+      var muteBtn = document.getElementById('mute-toggle');
+      if (!muteBtn || !window.SnakeAudio) {
+        return;
+      }
+      muteBtn.textContent = window.SnakeAudio.isMuted() ? 'SOUND: OFF' : 'SOUND: ON';
+    }
+    refreshMuteButton();
+    var muteToggle = document.getElementById('mute-toggle');
+    if (muteToggle) {
+      muteToggle.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        if (window.SnakeAudio) {
+          window.SnakeAudio.toggleMuted();
+          refreshMuteButton();
+        }
+      });
+    }
     var lastScore = 0;
     var lastStatus = 'title';
     window.SnakeGame.setOnFrame(function (st) {
@@ -137,6 +162,7 @@
       if (ev.key === 'm' || ev.key === 'M') {
         if (window.SnakeAudio) {
           window.SnakeAudio.toggleMuted();
+          refreshMuteButton();
         }
         return;
       }

@@ -19,8 +19,6 @@
     start: [1, 0.05, 900, 0.01, 0.06, 0.1, 1, 1.2]
   };
 
-  var unlocked = false;
-
   function loadMuted() {
     try {
       return window.localStorage.getItem(MUTE_KEY) === '1';
@@ -31,15 +29,24 @@
 
   var muted = loadMuted();
 
+  // Shared context created lazily by vendor/zzfx.js on first play.
+  // Never constructed here, so module load stays silent (autoplay policy).
   function context() {
     try {
       if (typeof zzfxX !== 'undefined' && zzfxX) {
         return zzfxX;
       }
     } catch (e) {}
+    try {
+      if (typeof window !== 'undefined' && window.zzfxX) {
+        return window.zzfxX;
+      }
+    } catch (e) {}
     return null;
   }
 
+  // Resume a suspended context. Never creates one: creation happens only
+  // inside zzfx() on an unmuted play, so muted playback stays silent.
   function unlock() {
     var ctx = context();
     if (!ctx) {
@@ -49,7 +56,6 @@
       if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
         ctx.resume();
       }
-      unlocked = true;
     } catch (e) {}
   }
 
@@ -59,17 +65,21 @@
         zzfx.apply(null, params);
       }
     } catch (e) {}
+    // The lazy context may have just been created suspended; resume it.
+    unlock();
   }
 
+  // Muted or unknown patches return before touching the context, so they
+  // neither sound nor create/resume anything.
   function play(name) {
-    unlock();
-    if (muted || !unlocked) {
+    if (muted) {
       return;
     }
     var s = SOUNDS[name];
     if (!s) {
       return;
     }
+    unlock();
     if (typeof s[0] === 'number') {
       playPatch(s);
       return;
@@ -109,6 +119,7 @@
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('keydown', gestureHandler);
     document.addEventListener('pointerdown', gestureHandler);
+    document.addEventListener('touchstart', gestureHandler);
   }
 
   window.SnakeAudio = {
