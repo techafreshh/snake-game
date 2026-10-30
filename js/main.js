@@ -62,6 +62,14 @@
       wrapBtn.classList.toggle('selected', !!wrap);
       wrapBtn.setAttribute('aria-pressed', wrap ? 'true' : 'false');
     }
+    var obstaclesOn = (typeof window.SnakeGame.isObstaclesEnabled === 'function')
+      ? window.SnakeGame.isObstaclesEnabled()
+      : !!st.obstaclesEnabled;
+    var obstaclesBtn = document.getElementById('obstacles-toggle');
+    if (obstaclesBtn) {
+      obstaclesBtn.textContent = obstaclesOn ? 'OBSTACLES: ON' : 'OBSTACLES: OFF';
+      obstaclesBtn.setAttribute('aria-pressed', obstaclesOn ? 'true' : 'false');
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -82,6 +90,19 @@
         ev.preventDefault();
         ev.stopPropagation();
         window.SnakeGame.setWrap(true);
+        syncDom(window.SnakeGame.getState());
+      });
+    }
+    var obstaclesBtn = document.getElementById('obstacles-toggle');
+    if (obstaclesBtn) {
+      obstaclesBtn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var cur = window.SnakeGame.isObstaclesEnabled();
+        window.SnakeGame.setObstaclesEnabled(!cur);
+        if (window.SnakeGame.getState().status === 'title') {
+          window.SnakeGame.resetGame();
+        }
         syncDom(window.SnakeGame.getState());
       });
     }

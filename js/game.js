@@ -11,7 +11,10 @@
     CELL_PX: 20,
     SCORE_PER_FOOD: 10,
     BEST_KEY: 'snake-best',
-    MODE_WRAP_KEY: 'snake-mode-wrap'
+    MODE_WRAP_KEY: 'snake-mode-wrap',
+    OBSTACLES_KEY: 'snake-mode-obstacles',
+    PRE_SPAWN_BLOCKS: 3,
+    OBSTACLE_SAFE_RADIUS: 4
   };
 
   var state = {
@@ -23,6 +26,9 @@
     score: 0,
     best: 0,
     wrap: false,
+    obstaclesEnabled: false,
+    obstacles: [],
+    obstacleBlocks: [],
     isNewBest: false,
     foodsEaten: 0,
     status: 'title'
@@ -73,6 +79,35 @@
     } catch (e) {}
   }
 
+  function loadObstaclesEnabled() {
+    try {
+      var raw = window.localStorage.getItem(CONFIG.OBSTACLES_KEY);
+      return raw === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveObstaclesEnabled(v) {
+    try {
+      window.localStorage.setItem(CONFIG.OBSTACLES_KEY, v ? '1' : '0');
+    } catch (e) {}
+  }
+
+  function isObstaclesEnabled() {
+    return !!state.obstaclesEnabled;
+  }
+
+  function setObstaclesEnabled(v) {
+    state.obstaclesEnabled = !!v;
+    saveObstaclesEnabled(state.obstaclesEnabled);
+    state.obstacles = [];
+    state.obstacleBlocks = [];
+    if (state.obstaclesEnabled && state.snake.length > 0) {
+      spawnObstacles(CONFIG.PRE_SPAWN_BLOCKS);
+    }
+  }
+
   function resetGame() {
     var c = Math.floor(CONFIG.GRID_SIZE / 2);
     state.snake = [
@@ -85,12 +120,18 @@
     state.score = 0;
     state.best = loadBest();
     state.wrap = loadWrap();
+    state.obstaclesEnabled = loadObstaclesEnabled();
+    state.obstacles = [];
+    state.obstacleBlocks = [];
     state.isNewBest = false;
     state.foodsEaten = 0;
     state.status = 'title';
     accumulator = 0;
     lastTime = 0;
     placeFood();
+    if (state.obstaclesEnabled) {
+      spawnObstacles(CONFIG.PRE_SPAWN_BLOCKS);
+    }
     snapshotPrev();
   }
 
@@ -103,13 +144,89 @@
     return false;
   }
 
+  function isOnObstacle(x, y) {
+    for (var i = 0; i < state.obstacles.length; i++) {
+      if (state.obstacles[i].x === x && state.obstacles[i].y === y) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function isSafeObstacleCell(x, y, head) {
+    if (isOnSnake(x, y)) {
+      return false;
+    }
+    if (state.food && state.food.x === x && state.food.y === y) {
+      return false;
+    }
+    if (isOnObstacle(x, y)) {
+      return false;
+    }
+    if (head) {
+      var d = Math.abs(x - head.x) + Math.abs(y - head.y);
+      if (d <= CONFIG.OBSTACLE_SAFE_RADIUS) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function tryPlaceObstacleBlock() {
+    var head = state.snake.length > 0 ? state.snake[0] : null;
+    for (var attempt = 0; attempt < 200; attempt++) {
+      var size = Math.random() < 0.5 ? 2 : 3;
+      var horizontal = Math.random() < 0.5;
+      var maxX = horizontal ? CONFIG.GRID_SIZE - size : CONFIG.GRID_SIZE - 1;
+      var maxY = horizontal ? CONFIG.GRID_SIZE - 1 : CONFIG.GRID_SIZE - size;
+      var ax = Math.floor(Math.random() * (maxX + 1));
+      var ay = Math.floor(Math.random() * (maxY + 1));
+      var cells = [];
+      var ok = true;
+      for (var i = 0; i < size; i++) {
+        var cx = horizontal ? ax + i : ax;
+        var cy = horizontal ? ay : ay + i;
+        if (!isSafeObstacleCell(cx, cy, head)) {
+          ok = false;
+          break;
+        }
+        cells.push({ x: cx, y: cy });
+      }
+      if (!ok) {
+        continue;
+      }
+      // Re-check food in case it moved between predicate and commit.
+      for (var j = 0; j < cells.length; j++) {
+        if (state.food && state.food.x === cells[j].x && state.food.y === cells[j].y) {
+          ok = false;
+          break;
+        }
+      }
+      if (!ok) {
+        continue;
+      }
+      for (var k = 0; k < cells.length; k++) {
+        state.obstacles.push(cells[k]);
+      }
+      state.obstacleBlocks.push(cells);
+      return true;
+    }
+    return false;
+  }
+
+  function spawnObstacles(n) {
+    for (var i = 0; i < n; i++) {
+      tryPlaceObstacleBlock();
+    }
+  }
+
   function placeFood() {
     var free = [];
     var x;
     var y;
     for (x = 0; x < CONFIG.GRID_SIZE; x++) {
       for (y = 0; y < CONFIG.GRID_SIZE; y++) {
-        if (!isOnSnake(x, y)) {
+        if (!isOnSnake(x, y) && !isOnObstacle(x, y)) {
           free.push({ x: x, y: y });
         }
       }
@@ -205,12 +322,22 @@
       }
     }
 
+    if (state.obstaclesEnabled && isOnObstacle(nx, ny)) {
+      maybeSaveBest();
+      state.isNewBest = (state.score > 0 && state.score >= state.best);
+      state.status = 'over';
+      return;
+    }
+
     state.snake.unshift({ x: nx, y: ny });
     if (eating) {
       state.score += CONFIG.SCORE_PER_FOOD;
       maybeSaveBest();
       state.foodsEaten += 1;
       placeFood();
+      if (state.obstaclesEnabled && state.foodsEaten % 5 === 0) {
+        spawnObstacles(1);
+      }
     } else {
       state.snake.pop();
     }
@@ -294,6 +421,8 @@
       state.wrap = !!v;
       saveWrap();
     },
+    isObstaclesEnabled: isObstaclesEnabled,
+    setObstaclesEnabled: setObstaclesEnabled,
     setOnFrame: function (cb) {
       onFrame = cb;
     }
