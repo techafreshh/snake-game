@@ -37,7 +37,7 @@ Press any arrow (or swipe/tap on touch) on the title overlay to start. On death,
 Additional behavior worth knowing:
 
 - Switching tabs auto-pauses mid-game (the `blur` handler pauses while `playing`).
-- Steering keys pressed while paused resume the game instead of buffering a turn.
+- Steering keys pressed while paused resume the game (the steering input is still buffered via `setDirection`).
 - Touch targets on `<button>` elements are ignored by the swipe handler, so the mode buttons stay tappable.
 - `touch-action: none` is set on the page, board, and overlays so play never scrolls or zooms.
 
@@ -52,7 +52,7 @@ Mode buttons sit on the title overlay (CLASSIC / WRAP) and above the board (OBST
 Scoring and speed, exactly as coded in `js/game.js`:
 
 - Regular food: **+10 points**. Each food eaten also speeds the snake up: tick interval starts at **150 ms** and decays by **0.975** per food, floored at **60 ms**.
-- Golden apple (gold star): **+50 points**, grows **+2** segments. Spawns after eating with **15%** chance.
+- Golden apple (gold star): **+50 points**, grows **+2** segments. A power-up spawns after eating with **15%** chance (coin-flip golden vs. slow-time), so golden is ~7.5% per food.
 - Slow-time (cyan clock): no points, no growth — multiplies the tick interval by **1.6** for **5 s** (HUD shows a `SLOW Ns` countdown). Re-eating while active refreshes the window.
 
 Power-up rules: golden and slow share a **single slot** — at most one pickup is on board, and a new one never spawns while one is present. Each expires **8 s** after spawning (wall clock) and blinks during the final **2 s**. Expiry does not run while paused.
@@ -100,7 +100,7 @@ CI runs `node --check` on all `js/*.js` on every push and PR.
 - Timed pickups expire on wall-clock time, so a golden apple or slow-time pickup can despawn while the snake idles on a long tick; expiry is only frozen while paused.
 - Only one power-up exists at a time — a second one can never be on the board simultaneously.
 - Best score is local only (`localStorage`): no accounts, no backend, no leaderboard.
-- Very small/portrait viewports shrink the board via CSS (`min(480px, 100vw - 32px, 100dvh - 260px)`); the 24x24 grid stays playable but cells get small.
+- Very small/portrait viewports shrink the board via CSS (`width: min(480px, calc(100vw - 32px), calc(100vh - 260px))` with a `calc(100dvh - 260px)` fallback line); the 24x24 grid stays playable but cells get small.
 - Grid, tick timings, and spawn chances are constants in `js/game.js` — there is no settings UI beyond the mode/sound buttons.
 
 ## Deploy (operator)
